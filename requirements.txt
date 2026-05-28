@@ -1,0 +1,16 @@
+torch>=2.0
+transformers>=4.40
+opencv-python>=4.8
+pillow>=10.0
+numpy>=1.24
+gdown>=5.1
+requests>=2.31
+beautifulsoup4>=4.12
+phonenumbers>=8.13
+gspread>=6.0
+google-auth>=2.30
+python-dotenv>=1.0
+tqdm>=4.66
+playwright>=1.40
+anthropic>=0.40
+pytest>=8.0

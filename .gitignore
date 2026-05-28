@@ -1,0 +1,16 @@
+venv/
+__pycache__/
+*.pyc
+.env
+training_data/
+models/*.npy
+.DS_Store
+browser_profile/
+debug_last_page.html
+listings*.json
+scored_listings*.json
+test_*.json
+data/
+logs/
+credentials/*.json
+.pytest_cache/
