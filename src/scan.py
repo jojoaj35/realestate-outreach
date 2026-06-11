@@ -29,8 +29,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import photo_quality
 import photos
 import score_listings
+import scrape_hasdata
 import scrape_zillow
 from config import settings
+from hasdata_client import hasdata_available
 from store import get_store
 
 # Phase 1 (hero) is only a cheap pre-filter; enrich this many times ``keep``
@@ -59,6 +61,19 @@ def _hero_clip(listing: dict) -> float | None:
         return None
 
 
+def _hasdata_enrich(candidates: list[dict]) -> None:
+    """Fill agent contact + full gallery via the HasData Property API (in place)."""
+    from dataclasses import fields as dc_fields
+
+    from scrape_realtor import Listing
+
+    keys = {f.name for f in dc_fields(Listing)}
+    for d in candidates:
+        listing = Listing(**{k: v for k, v in d.items() if k in keys})
+        scrape_hasdata.enrich_listing(listing)
+        d.update(asdict(listing))
+
+
 def scan(city: str = "Austin", count: int = 200, keep: int = 15,
          max_pro_score: float | None = None, state: str = "TX",
          url: str | None = None, progress=None, **_ignored) -> list[dict]:
@@ -83,10 +98,17 @@ def scan(city: str = "Austin", count: int = 200, keep: int = 15,
             progress(kw)
 
     url = (url or "").strip()
+    # HasData scrapes Zillow from their infrastructure, so scans work from a
+    # datacenter (e.g. Render) where Zillow blocks our own stealth browser.
+    use_hasdata = hasdata_available() and not url
     if url:
         print(f"== phase 1: scanning Zillow link (photos only) ==\n  {url}")
         report(phase="scanning", message="Scanning Zillow link…")
         listings = scrape_zillow.discover_listings_from_url(url, max_urls=max(count, 25))
+    elif use_hasdata:
+        print(f"== phase 1: discovering {count} {city} Zillow listings via HasData ==")
+        report(phase="scanning", message=f"Discovering {city} Zillow listings via HasData…")
+        listings = scrape_hasdata.scrape(city, state, max_results=max(count, 25), enrich=False)
     else:
         print(f"== phase 1: discovering {count} {city} Zillow listings (photos only) ==")
         report(phase="scanning", message=f"Discovering {city} Zillow listings via Scrapling…")
@@ -132,7 +154,10 @@ def scan(city: str = "Austin", count: int = 200, keep: int = 15,
            message=f"Opening detail pages for {len(candidates)} kept listings…")
 
     # One stealth browser session reads agent contact + full gallery for all kept.
-    scrape_zillow.enrich_agents(candidates, city, state)
+    if use_hasdata:
+        _hasdata_enrich(candidates)
+    else:
+        scrape_zillow.enrich_agents(candidates, city, state)
 
     enriched = []
     drone_skipped = 0

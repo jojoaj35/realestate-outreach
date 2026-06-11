@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 .env
 training_data/
-models/*.npy
+models/backup_*/
 .DS_Store
 browser_profile/
 debug_last_page.html
