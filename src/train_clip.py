@@ -1,10 +1,22 @@
-"""Train the one-class CLIP centroid from your 'good' photo set.
+"""Build the photo classifier from YOUR labeled photos.
 
-Output: models/good_centroid.npy + models/good_embeddings.npy
+Two classes, both grounded in real images (no guessing from text prompts):
+  - training_data/good     -> professionally shot / edited listings  (NOT targets)
+  - training_data/target   -> amateur / phone-photo listings         (your targets)
+
+Output (models/):
+  good_embeddings.npy    CLIP embeddings of the pro set
+  target_embeddings.npy  CLIP embeddings of the amateur/target set
+  good_centroid.npy      mean pro embedding (kept for compatibility)
+
+score.classify() loads these and decides pro-vs-amateur by nearest-neighbor
+similarity in CLIP space, which separates the two classes far better than a
+generic text prompt.
 """
 from __future__ import annotations
 
 from pathlib import Path
+
 import numpy as np
 import torch
 from PIL import Image
@@ -12,8 +24,10 @@ from transformers import CLIPModel, CLIPProcessor
 from tqdm import tqdm
 
 MODEL_ID = "openai/clip-vit-base-patch32"
-TRAINING_DIR = Path(__file__).resolve().parent.parent / "training_data" / "good"
-MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
+ROOT = Path(__file__).resolve().parent.parent
+GOOD_DIR = ROOT / "training_data" / "good"
+TARGET_DIR = ROOT / "training_data" / "target"
+MODELS_DIR = ROOT / "models"
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 
 
@@ -34,9 +48,8 @@ def collect_images(root: Path) -> list[Path]:
 def embed(paths: list[Path], model, processor, device, batch_size: int = 16) -> np.ndarray:
     vecs = []
     for i in tqdm(range(0, len(paths), batch_size), desc="Embedding"):
-        batch_paths = paths[i : i + batch_size]
         images = []
-        for p in batch_paths:
+        for p in paths[i : i + batch_size]:
             try:
                 images.append(Image.open(p).convert("RGB"))
             except Exception as e:
@@ -46,32 +59,55 @@ def embed(paths: list[Path], model, processor, device, batch_size: int = 16) -> 
         inputs = processor(images=images, return_tensors="pt").to(device)
         with torch.no_grad():
             out = model.get_image_features(**inputs)
-            # transformers 5.x wraps the already-projected 512-dim embed in ModelOutput
             feats = out.pooler_output if hasattr(out, "pooler_output") else out
         feats = feats / feats.norm(dim=-1, keepdim=True)
         vecs.append(feats.cpu().numpy())
     return np.concatenate(vecs, axis=0) if vecs else np.zeros((0, 512))
 
 
+def _knn_pro_prob(feat, good, target, k=5, scale=20.0):
+    sg = np.sort(good @ feat)[::-1][:k].mean()
+    st = np.sort(target @ feat)[::-1][:k].mean()
+    eg, et = np.exp(scale * sg), np.exp(scale * st)
+    return eg / (eg + et)
+
+
+def _validate(good: np.ndarray, target: np.ndarray, k=5, scale=20.0) -> None:
+    """Leave-one-out accuracy so we know the classifier actually separates."""
+    correct = 0
+    for j in range(len(good)):
+        rest = np.delete(good, j, axis=0)
+        if _knn_pro_prob(good[j], rest, target, k, scale) >= 0.5:
+            correct += 1
+    for j in range(len(target)):
+        rest = np.delete(target, j, axis=0)
+        if _knn_pro_prob(target[j], good, rest, k, scale) < 0.5:
+            correct += 1
+    total = len(good) + len(target)
+    print(f"\nLeave-one-out accuracy: {correct}/{total} = {correct/total:.0%}")
+
+
 def main():
     MODELS_DIR.mkdir(exist_ok=True, parents=True)
-    paths = collect_images(TRAINING_DIR)
-    if not paths:
-        raise SystemExit(f"No images in {TRAINING_DIR}")
+    good_paths = collect_images(GOOD_DIR)
+    target_paths = collect_images(TARGET_DIR)
+    if not good_paths:
+        raise SystemExit(f"No pro images in {GOOD_DIR}")
+    if not target_paths:
+        raise SystemExit(f"No target images in {TARGET_DIR} — add example listings first.")
 
     model, processor, device = load_model()
-    embeddings = embed(paths, model, processor, device)
-    centroid = embeddings.mean(axis=0)
-    centroid = centroid / np.linalg.norm(centroid)
+    good = embed(good_paths, model, processor, device)
+    target = embed(target_paths, model, processor, device)
 
-    np.save(MODELS_DIR / "good_embeddings.npy", embeddings)
-    np.save(MODELS_DIR / "good_centroid.npy", centroid)
+    np.save(MODELS_DIR / "good_embeddings.npy", good)
+    np.save(MODELS_DIR / "target_embeddings.npy", target)
+    centroid = good.mean(axis=0)
+    np.save(MODELS_DIR / "good_centroid.npy", centroid / np.linalg.norm(centroid))
 
-    sims = embeddings @ centroid
-    print(f"\nTrained on {len(embeddings)} images")
-    print(f"Cosine-sim to centroid: mean={sims.mean():.3f}  min={sims.min():.3f}  "
-          f"p10={np.percentile(sims, 10):.3f}  p50={np.percentile(sims, 50):.3f}")
-    print(f"Saved -> {MODELS_DIR}/good_centroid.npy")
+    print(f"\nPro set: {len(good)} imgs   Target set: {len(target)} imgs")
+    _validate(good, target)
+    print(f"Saved prototypes -> {MODELS_DIR}")
 
 
 if __name__ == "__main__":

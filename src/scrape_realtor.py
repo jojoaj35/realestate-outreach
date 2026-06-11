@@ -65,6 +65,8 @@ class Listing:
     agent_phone: str = ""
     agent_email: str = ""
     broker_name: str = ""
+    has_virtual_tour: bool = False
+    virtual_tour_url: str = ""
     raw_source: str = ""
 
 

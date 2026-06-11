@@ -31,12 +31,20 @@ FIELDNAMES = [
     "agent_name",
     "agent_phone",
     "agent_email",
+    "broker_name",
     "url",
+    "photo",
     "photo_count",
     "score",
+    "clip_score",
+    "pro_style_score",
+    "vertical_score",
+    "has_drone",
+    "has_virtual_tour",
     "score_reasons",
     "status",
     "sent_at",
+    "channel",
     "message_sent",
     "reply_text",
     "reply_sentiment",
@@ -51,8 +59,18 @@ def _now() -> str:
 def listing_to_row(listing: dict) -> dict:
     """Map a scored listing dict into a queue row (status decided by score)."""
     score = listing.get("score")
+    agent_name = (listing.get("agent_name") or "").strip()
+    agent_phone = normalize_phone(listing.get("agent_phone", ""))
+    reasons = str(listing.get("score_reasons") or "")
     status = "new"
-    if isinstance(score, (int, float)):
+    if listing.get("has_virtual_tour"):
+        status = "skipped"
+    elif reasons in {"no downloadable photos", "photos unreadable"}:
+        status = "skipped"
+    elif not agent_name or agent_name.lower() == "redfin" or not agent_phone:
+        # Outreach is listing-agent only — no name/phone means not contactable.
+        status = "skipped"
+    elif isinstance(score, (int, float)):
         status = "queued" if score <= settings.outreach_score_threshold else "new"
     return {
         "listing_id": str(listing.get("listing_id", "")),
@@ -63,12 +81,20 @@ def listing_to_row(listing: dict) -> dict:
         "agent_name": listing.get("agent_name", ""),
         "agent_phone": normalize_phone(listing.get("agent_phone", "")),
         "agent_email": listing.get("agent_email", ""),
+        "broker_name": listing.get("broker_name", ""),
         "url": listing.get("url", ""),
+        "photo": (listing.get("photo_urls") or [listing.get("photo", "")])[0] or "",
         "photo_count": listing.get("photo_count", ""),
         "score": listing.get("score", ""),
+        "clip_score": listing.get("clip_score", ""),
+        "pro_style_score": listing.get("pro_style_score", ""),
+        "vertical_score": listing.get("vertical_score", ""),
+        "has_drone": "yes" if listing.get("has_drone") else "",
+        "has_virtual_tour": "yes" if listing.get("has_virtual_tour") else "",
         "score_reasons": listing.get("score_reasons", ""),
         "status": status,
         "sent_at": "",
+        "channel": "",
         "message_sent": "",
         "reply_text": "",
         "reply_sentiment": "",
@@ -126,8 +152,9 @@ class LocalStore:
             if lid in by_id:
                 # Refresh score fields but never clobber outreach progress.
                 existing = by_id[lid]
-                for k in ("score", "score_reasons", "photo_count", "agent_phone",
-                          "agent_email", "agent_name"):
+                for k in ("score", "clip_score", "pro_style_score", "vertical_score",
+                          "score_reasons", "photo_count", "agent_phone", "agent_email",
+                          "agent_name", "broker_name", "has_drone", "has_virtual_tour"):
                     if row.get(k):
                         existing[k] = row[k]
                 existing["updated_at"] = _now()

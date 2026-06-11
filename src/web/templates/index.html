@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ settings.business_name }} — Outreach</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#171b22; --panel2:#1d222b; --line:#272d38;
+    --text:#e6e9ef; --muted:#8b93a3; --accent:#5b8cff; --accent2:#3f6fe0;
+    --good:#34d399; --warn:#fbbf24; --bad:#f87171; --chip:#222836;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg);color:var(--text)}
+  a{color:var(--accent);text-decoration:none}
+  header{position:sticky;top:0;z-index:20;background:rgba(14,17,22,.9);
+         backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:14px 22px}
+  .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .brand{font-weight:700;font-size:17px;letter-spacing:.2px}
+  .brand small{color:var(--muted);font-weight:500;margin-left:8px;font-size:12px}
+  .meta{color:var(--muted);font-size:12px;margin-left:auto}
+  .wrap{max-width:1200px;margin:0 auto;padding:18px 22px 120px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px}
+  .toolbar{padding:16px;margin-bottom:16px}
+  .toolbar h3{margin:0 0 12px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  label.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--text);
+        padding:8px 10px;border-radius:9px;font-size:13px;outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  input[type=number]{width:90px}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:9px;padding:9px 16px;
+       font-weight:600;font-size:13px;cursor:pointer;transition:.15s}
+  .btn:hover{background:var(--accent2)}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+  .btn.ghost:hover{border-color:var(--accent)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.sm{padding:6px 11px;font-size:12px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+  .chip{background:var(--chip);border:1px solid var(--line);border-radius:999px;
+        padding:5px 12px;font-size:12px;color:var(--muted)}
+  .chip b{color:var(--text)}
+  .progress{height:6px;background:var(--panel2);border-radius:999px;overflow:hidden;margin-top:12px;display:none}
+  .progress.show{display:block}
+  .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--good));transition:width .3s}
+  .pmsg{font-size:12px;color:var(--muted);margin-top:8px;min-height:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .listing{overflow:hidden;display:flex;flex-direction:column;position:relative}
+  .listing.sel{outline:2px solid var(--accent)}
+  .thumb{height:170px;background:#0a0c10 center/cover no-repeat;position:relative}
+  .thumb .noimg{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:12px}
+  .badge{position:absolute;top:10px;left:10px;padding:4px 9px;border-radius:8px;font-weight:700;
+         font-size:12px;color:#0b0d11}
+  .pick{position:absolute;top:10px;right:10px;width:22px;height:22px;cursor:pointer}
+  .body{padding:13px;display:flex;flex-direction:column;gap:6px;flex:1}
+  .addr{font-weight:600}
+  .sub{color:var(--muted);font-size:12px}
+  .agent{font-size:13px}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+  .tag{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--chip);color:var(--muted)}
+  .tag.st-queued{color:#bcd0ff}.tag.st-sent{color:var(--good)}
+  .tag.st-dnc{color:var(--bad)}.tag.st-skipped{color:var(--warn)}
+  .acts{display:flex;gap:6px;margin-top:8px}
+  .footer{position:fixed;bottom:0;left:0;right:0;background:rgba(20,24,30,.96);
+          backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:12px 22px;z-index:30}
+  .footer .row{max-width:1200px;margin:0 auto}
+  .switch{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer}
+  .switch input{accent-color:var(--accent)}
+  .empty{padding:60px 20px;text-align:center;color:var(--muted)}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;
+         justify-content:center;z-index:50;padding:20px}
+  .modal.show{display:flex}
+  .modal .card{max-width:520px;width:100%;padding:20px;max-height:85vh;overflow:auto}
+  .modal.wide .card{max-width:640px}
+  .result-row{padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .result-row:last-child{border:none}
+  .result-row b{display:block;margin-bottom:4px}
+  .result-row .ok{color:var(--good)}.result-row .skip{color:var(--warn)}.result-row .bad{color:var(--bad)}
+  .listing{cursor:pointer}
+  .bubble{background:#0b6efd1a;border:1px solid #2a4a8a;border-radius:14px;padding:14px;
+          white-space:pre-wrap;margin:12px 0;font-size:13px;line-height:1.55}
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--panel2);
+         border:1px solid var(--line);border-radius:10px;padding:11px 18px;font-size:13px;
+         opacity:0;transition:.25s;pointer-events:none;z-index:60;max-width:90%}
+  .toast.show{opacity:1}
+  .toast.err{border-color:var(--bad)}
+  .tabs{display:flex;gap:6px;margin-top:12px}
+  .tab{background:transparent;border:1px solid var(--line);border-radius:10px;padding:7px 14px;
+       font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--accent);color:var(--text)}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .tab.ig.active{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);border-color:transparent}
+  .panel{display:none}.panel.active{display:block}
+  .ig-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);
+             display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff;flex-shrink:0}
+  .ig-card .body{flex-direction:row;gap:12px;align-items:flex-start}
+  .ig-meta{flex:1;min-width:0}
+  .bio{font-size:12px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .score-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .score-pill{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--chip);font-weight:600}
+  .reason-chip{font-size:10px;padding:2px 7px;border-radius:999px;background:#222836;border:1px solid var(--line);color:var(--muted)}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid #fff5;border-top-color:#fff;
+        border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <div class="brand">{{ settings.business_name }}<small>cold-outreach control panel</small></div>
+    <div class="meta" id="headerMeta">
+      {{ settings.contact_phone }} · {{ settings.special_offer }} ·
+      iMessage {{ settings.send_hour_start }}:00–{{ settings.send_hour_end }}:00 ·
+      cap {{ settings.daily_send_cap }}/day
+    </div>
+  </div>
+  <div class="tabs">
+    <button type="button" class="tab active" id="tabListings" onclick="switchTab('listings')">Listings</button>
+    <button type="button" class="tab ig" id="tabIg" onclick="switchTab('ig')">IG DMs</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="panel active" id="panel-listings">
+  <div class="card toolbar">
+    <h3>Find Zillow listings with non-professional photos</h3>
+    <div class="row">
+      <label class="fld">City
+        <input id="city" value="Austin">
+      </label>
+      <label class="fld" id="stateFld">State
+        <input id="state" value="TX" maxlength="2" style="width:4rem">
+      </label>
+      <label class="fld">Listings to scan
+        <input id="count" type="number" value="40" min="20" max="2000">
+      </label>
+      <label class="fld">Keep worst
+        <input id="keep" type="number" value="15" min="1" max="100">
+      </label>
+      <label class="fld">Max pro-score
+        <input id="maxpro" type="number" step="0.05" value="" placeholder="any">
+      </label>
+      <button type="button" class="btn" id="scanBtn" onclick="startScan()">Run scan</button>
+    </div>
+    <div class="row">
+      <label class="fld" style="flex:1 1 100%">Zillow link (optional — overrides city/state)
+        <input id="zurl" placeholder="https://www.zillow.com/homes/Austin,-TX_rb/  (search or single listing)">
+      </label>
+    </div>
+    <div class="progress" id="prog"><div class="bar" id="bar"></div></div>
+    <div class="pmsg" id="pmsg"></div>
+  </div>
+
+  <div class="chips" id="chips"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">
+    No listings yet. Run a scan above to pull in agents with weak photos.
+  </div>
+  </div>
+
+  <div class="panel" id="panel-ig">
+  <div class="card toolbar">
+    <h3>IG DMs — AI agent finds realtors by city</h3>
+    <div class="row">
+      <label class="fld">City
+        <input id="igCity" value="San Antonio">
+      </label>
+      <label class="fld">Max profiles
+        <input id="igMax" type="number" value="30" min="5" max="100">
+      </label>
+      <label class="fld" id="igMinScoreWrap">Min confidence
+        <input id="igMinScore" type="number" step="0.05" min="0" max="1" value="0.55" title="Only used in legacy CLIP mode">
+      </label>
+      <label class="switch" style="margin-top:18px"><input type="checkbox" id="igEnrich"> Also search listing queue agents</label>
+      <button type="button" class="btn" id="igDiscoverBtn" onclick="startIgDiscover()">Run AI discover</button>
+    </div>
+    <div class="progress" id="igProg"><div class="bar" id="igBar"></div></div>
+    <div class="pmsg" id="igPmsg"></div>
+    <div class="sub" style="margin-top:8px" id="igAgentNote">
+      {% if settings.ig_agent_mode %}
+      GPT agent mode — searches Instagram, inspects profiles, and queues realtors automatically. Log in when the browser opens.
+      {% elif settings.ig_llm_enabled %}
+      Add <code>OPENAI_API_KEY</code> to .env to enable the AI discovery agent.
+      {% else %}
+      Legacy CLIP-only discovery. Set <code>IG_LLM_MODE=agent</code> + OpenAI key for the AI agent.
+      {% endif %}
+    </div>
+  </div>
+  <div class="chips" id="igChips"></div>
+  <div class="grid" id="igGrid"></div>
+  <div class="empty" id="igEmpty" style="display:none">
+    No Instagram profiles yet. Run discover above.
+  </div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="row" id="footer-listings">
+    <span id="selCount" class="chip"><b>0</b> selected</span>
+    <button type="button" class="btn ghost sm" onclick="selectAll()">Select all queued</button>
+    <button type="button" class="btn ghost sm" onclick="clearSel()">Clear</button>
+    <label class="switch"><input type="checkbox" id="dry" checked> Dry run (preview only)</label>
+    <label class="switch"><input type="checkbox" id="force"> Force (ignore hours)</label>
+    <button type="button" class="btn" id="sendBtn" onclick="sendSelected()" style="margin-left:auto">Send to selected</button>
+    <button type="button" class="btn ghost" onclick="doExport()">Export .xls</button>
+  </div>
+  <div class="row" id="footer-ig" style="display:none">
+    <span id="igSelCount" class="chip"><b>0</b> selected</span>
+    <button type="button" class="btn ghost sm" onclick="igSelectAll()">Select all queued</button>
+    <button type="button" class="btn ghost sm" onclick="igClearSel()">Clear</button>
+    <label class="switch"><input type="checkbox" id="igDry" checked> Dry run (preview only)</label>
+    <label class="switch"><input type="checkbox" id="igForce"> Force (ignore hours)</label>
+    <label class="switch"><input type="checkbox" id="igAuto"> Automated send (Playwright)</label>
+    <button type="button" class="btn" id="igSendBtn" onclick="igSendSelected()" style="margin-left:auto">DM selected</button>
+  </div>
+</div>
+
+<div class="modal" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="card">
+    <div class="row"><b id="mTitle">Message preview</b>
+      <button type="button" class="btn ghost sm" style="margin-left:auto" onclick="closeModal()">Close</button></div>
+    <div class="bubble" id="mBody"></div>
+    <div class="sub" id="mMeta"></div>
+  </div>
+</div>
+
+<div class="modal wide" id="sendModal" onclick="if(event.target===this)closeSendModal()">
+  <div class="card">
+    <div class="row"><b id="sendTitle">Send results</b>
+      <button type="button" class="btn ghost sm" style="margin-left:auto" onclick="closeSendModal()">Close</button></div>
+    <div id="sendBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let LISTINGS = [], SEL = new Set(), POLL = null, SEND_POLL = null;
+let IG_PROFILES = [], IG_SEL = new Set(), IG_POLL = null, IG_SEND_POLL = null;
+let ACTIVE_TAB = 'listings';
+const IG_META = {{ settings.ig_daily_dm_cap }} + '/day IG cap · mode: {{ settings.ig_send_mode }}'
+  + ({% if settings.ig_agent_mode %} ' · GPT agent'{% elif settings.ig_llm_enabled %} ' · LLM {{ settings.ig_llm_mode }}'{% else %} ' · CLIP only'{% endif %});
+const LISTINGS_META = 'iMessage {{ settings.send_hour_start }}:00–{{ settings.send_hour_end }}:00 · cap {{ settings.daily_send_cap }}/day';
+
+function switchTab(tab, pushHash=true){
+  ACTIVE_TAB = tab;
+  document.getElementById('panel-listings').classList.toggle('active', tab==='listings');
+  document.getElementById('panel-ig').classList.toggle('active', tab==='ig');
+  document.getElementById('tabListings').classList.toggle('active', tab==='listings');
+  document.getElementById('tabIg').classList.toggle('active', tab==='ig');
+  document.getElementById('footer-listings').style.display = tab==='listings' ? 'flex':'none';
+  document.getElementById('footer-ig').style.display = tab==='ig' ? 'flex':'none';
+  document.getElementById('headerMeta').textContent =
+    '{{ settings.contact_phone }} · {{ settings.special_offer }} · ' +
+    (tab==='ig' ? IG_META : LISTINGS_META);
+  if(pushHash){
+    history.replaceState(null, '', tab==='ig' ? '#ig' : '#listings');
+  }
+  if(tab==='ig') loadIg();
+}
+
+function toast(msg, err){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (err ? ' err':'');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.className='toast', err ? 6000 : 4000);
+}
+function scoreColor(v){
+  if(v==='' || v==null) return '#6b7280';
+  v=parseFloat(v);
+  if(v<0.45) return '#f87171';
+  if(v<0.6) return '#fbbf24';
+  return '#34d399';
+}
+function esc(s){return (s||'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function escUrl(u){return esc(u).replace(/[()]/g,'');}
+
+async function load(){
+  const r = await fetch('/api/listings'); const d = await r.json();
+  LISTINGS = d.listings; render(d);
+}
+function render(d){
+  const chips = document.getElementById('chips');
+  const order = ['queued','sent','dnc','skipped','new'];
+  chips.innerHTML = `<span class="chip"><b>${d.total}</b> listings</span>` +
+    order.filter(s=>d.counts[s]).map(s=>`<span class="chip">${s}: <b>${d.counts[s]}</b></span>`).join('');
+
+  const grid = document.getElementById('grid');
+  document.getElementById('empty').style.display = LISTINGS.length ? 'none':'block';
+  grid.innerHTML = LISTINGS.map(L=>{
+    const id = esc(L.listing_id);
+    const sel = SEL.has(L.listing_id) ? ' sel':'';
+    const pro = L.clip_score;
+    const proTxt = (pro===''||pro==null) ? '—' : parseFloat(pro).toFixed(2);
+    const thumb = L.photo
+      ? `<div class="thumb" style="background-image:url('${escUrl(L.photo)}')">`
+      : `<div class="thumb"><div class="noimg">no photo</div>`;
+    const price = L.list_price ? ('$'+Number(L.list_price).toLocaleString()) : '';
+    const checked = SEL.has(L.listing_id)?'checked':'';
+    return `<div class="card listing${sel}" id="c-${id}" onclick="cardClick(event,'${id}')">
+      ${thumb}
+        <span class="badge" style="background:${scoreColor(pro)}">pro ${proTxt}</span>
+        <input class="pick" type="checkbox" ${checked} onclick="event.stopPropagation()" onchange="toggle('${id}')">
+      </div>
+      <div class="body">
+        <div class="addr">${esc(L.address)||'(no address)'}</div>
+        <div class="sub">${esc(L.city)} ${price?'· '+price:''} ${L.photo_count?'· '+L.photo_count+' photos':''}</div>
+        <div class="sub">${L.vertical_score!==''&&L.vertical_score!=null?`verticals ${(parseFloat(L.vertical_score)*100).toFixed(0)}% straight`:''} ${L.pro_style_score!==''&&L.pro_style_score!=null?`· style ${parseFloat(L.pro_style_score).toFixed(2)}`:''}</div>
+        <div class="agent">${esc(L.agent_name)||'<span class="sub">unknown agent</span>'}
+          ${L.agent_phone?'· '+esc(L.agent_phone):''}</div>
+        <div class="sub">${esc(L.broker_name)}</div>
+        <div class="tags">
+          <span class="tag st-${esc(L.status)}">${esc(L.status)}</span>
+          ${L.has_drone?`<span class="tag" style="color:#f0a">drone</span>`:''}
+          ${L.has_virtual_tour?`<span class="tag" style="color:#9cf">3D tour</span>`:''}
+          ${L.url?`<a class="tag" href="${esc(L.url)}" target="_blank">listing ↗</a>`:''}
+        </div>
+        <div class="acts">
+          <button class="btn ghost sm" onclick="preview('${id}')">Preview message</button>
+          ${L.agent_phone?`<button class="btn ghost sm" onclick="dnc('${esc(L.agent_phone)}')">DNC</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  updateSel();
+}
+function toggle(id){
+  SEL.has(id)?SEL.delete(id):SEL.add(id);
+  const el=document.getElementById('c-'+id);
+  if(el){ el.classList.toggle('sel', SEL.has(id));
+    const cb=el.querySelector('.pick'); if(cb) cb.checked=SEL.has(id); }
+  updateSel();
+}
+function cardClick(ev,id){
+  if(ev.target.closest('button,a,input')) return;
+  toggle(id);
+}
+function updateSel(){ document.getElementById('selCount').innerHTML = `<b>${SEL.size}</b> selected`; }
+function selectAll(){ LISTINGS.forEach(L=>{ if(L.status==='queued'&&L.agent_phone) SEL.add(L.listing_id); }); render({total:LISTINGS.length,counts:countStatuses()}); }
+function clearSel(){ SEL.clear(); render({total:LISTINGS.length,counts:countStatuses()}); }
+function countStatuses(){ const c={}; LISTINGS.forEach(L=>c[L.status]=(c[L.status]||0)+1); return c; }
+
+async function preview(id){
+  const r = await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({listing_id:id})});
+  const d = await r.json();
+  if(d.error){ toast(d.error,true); return; }
+  document.getElementById('mTitle').textContent = 'Message to ' + (d.agent_name||'agent');
+  document.getElementById('mBody').textContent = d.message;
+  document.getElementById('mMeta').textContent = d.phone ? ('Will send to '+d.phone) : 'No phone on file';
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+
+async function dnc(phone){
+  if(!confirm('Add '+phone+' to do-not-contact?')) return;
+  const r = await fetch('/api/dnc',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone})});
+  const d = await r.json();
+  if(d.ok){ toast(phone+' added to DNC'); load(); } else toast(d.error||'failed',true);
+}
+
+function closeSendModal(){ document.getElementById('sendModal').classList.remove('show'); }
+
+function showSendResults(job){
+  const dry = job.dry_run;
+  const s = job.stats || {};
+  const results = job.results || [];
+  document.getElementById('sendTitle').textContent =
+    dry ? `Preview — ${s.sent||0} ready to send` : `Sent — ${s.sent||0} delivered`;
+  const cls = o => o==='preview'||o==='sent'?'ok':o==='dnc'?'bad':'skip';
+  let html = '';
+  if(s.error){
+    html += `<p class="bad" style="margin:12px 0">${esc(s.error)}</p>`;
+    if(!dry) html += `<p class="sub">Tip: check <b>Force</b> if outside business hours, or use dry run first.</p>`;
+  } else {
+    html += `<p class="sub" style="margin:8px 0">${s.sent||0} ok · ${s.skipped||0} skipped · ${s.dnc||0} dnc</p>`;
+  }
+  results.forEach(r=>{
+    html += `<div class="result-row"><b class="${cls(r.outcome)}">${esc(r.address||r.listing_id)} — ${r.outcome}</b>`;
+    html += `<span class="sub">${esc(r.phone)} · ${esc(r.detail)}</span>`;
+    if(r.message) html += `<div class="bubble" style="margin-top:8px;font-size:12px">${esc(r.message)}</div>`;
+    html += `</div>`;
+  });
+  if(!results.length && !s.error) html += `<p class="sub">No results returned.</p>`;
+  document.getElementById('sendBody').innerHTML = html;
+  document.getElementById('sendModal').classList.add('show');
+}
+
+async function sendSelected(){
+  if(!SEL.size){ toast('Select at least one listing — click cards or checkboxes',true); return; }
+  const dry = document.getElementById('dry').checked;
+  const force = document.getElementById('force').checked;
+  if(!dry && !force && !confirm(`Send REAL iMessages to ${SEL.size} agent(s)?\n\nOutside 10 AM–6 PM? Check Force first.`)) return;
+  if(!dry && force && !confirm(`Send REAL iMessages to ${SEL.size} agent(s)?`)) return;
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>'+(dry?'Previewing…':'Sending…');
+  try{
+    const r = await fetch('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({listing_ids:[...SEL], dry_run:dry, force})});
+    let d;
+    try{ d = await r.json(); }catch(_){ throw new Error('Server returned invalid response'); }
+    if(!r.ok){ toast(d.error||('Send failed ('+r.status+')'),true); return; }
+    if(!d.job_id){ toast(d.error||'No job id from server',true); return; }
+    toast(dry?'Running preview…':'Sending messages…');
+    if(SEND_POLL) clearInterval(SEND_POLL);
+    SEND_POLL = setInterval(async ()=>{
+      try{
+        const sr = await fetch('/api/send/status?job_id='+d.job_id);
+        const job = await sr.json();
+        if(job.phase==='done'){
+          clearInterval(SEND_POLL); SEND_POLL=null;
+          showSendResults(job);
+          toast(`${dry?'Preview':'Send'} finished`);
+          if(!dry){ SEL.clear(); updateSel(); }
+          load();
+        } else if(job.phase==='error'){
+          clearInterval(SEND_POLL); SEND_POLL=null;
+          toast(job.message||'Send failed',true);
+        }
+      }catch(e){
+        clearInterval(SEND_POLL); SEND_POLL=null;
+        toast('Lost connection while sending: '+e,true);
+      }
+    }, 500);
+  }catch(e){ toast('Request failed: '+e.message,true); }
+  finally{
+    btn.disabled=false;
+    btn.textContent='Send to selected';
+  }
+}
+
+async function doExport(){
+  const r = await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({limit:50})});
+  const d = await r.json();
+  if(d.error){ toast(d.error,true); return; }
+  toast(`Exported ${d.count} agents`); window.location='/api/export/download';
+}
+
+async function startScan(){
+  const body = {
+    url: document.getElementById('zurl').value.trim() || null,
+    city: document.getElementById('city').value || 'Austin',
+    state: document.getElementById('state').value || 'TX',
+    count: +document.getElementById('count').value,
+    keep: +document.getElementById('keep').value,
+    max_pro_score: document.getElementById('maxpro').value || null,
+  };
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  document.getElementById('prog').classList.add('show');
+  const r = await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)});
+  const d = await r.json();
+  if(d.error){ toast(d.error,true); btn.disabled=false; return; }
+  POLL = setInterval(()=>pollScan(d.job_id), 1200);
+}
+async function pollScan(jobId){
+  const r = await fetch('/api/scan/status?job_id='+jobId); const j = await r.json();
+  document.getElementById('pmsg').textContent = j.message || j.phase || '';
+  const bar = document.getElementById('bar');
+  if(j.total){ bar.style.width = Math.round((j.done||0)/j.total*100)+'%'; }
+  else if(j.phase==='scanning'){ bar.style.width='8%'; }
+  if(j.phase==='done' || j.phase==='error'){
+    clearInterval(POLL); POLL=null;
+    document.getElementById('scanBtn').disabled=false;
+    bar.style.width = j.phase==='done' ? '100%':'0';
+    toast(j.message || (j.phase==='done'?'Scan complete':'Scan failed'), j.phase==='error');
+    setTimeout(()=>document.getElementById('prog').classList.remove('show'), 1500);
+    load();
+  }
+}
+
+load();
+if(location.hash==='#ig') switchTab('ig', false);
+window.addEventListener('hashchange', ()=>{
+  if(location.hash==='#ig') switchTab('ig', false);
+  else if(location.hash==='#listings' || location.hash==='') switchTab('listings', false);
+});
+setInterval(()=>{ if(!POLL && ACTIVE_TAB==='listings') load(); }, 15000);
+setInterval(()=>{ if(!IG_POLL && ACTIVE_TAB==='ig') loadIg(); }, 15000);
+
+async function loadIg(){
+  const r = await fetch('/api/ig/profiles'); const d = await r.json();
+  IG_PROFILES = d.profiles; renderIg(d);
+}
+function parseRankReasons(raw){
+  if(!raw) return [];
+  if(Array.isArray(raw)) return raw;
+  try{ return JSON.parse(raw); }catch(_){ return String(raw).split(',').map(s=>s.trim()).filter(Boolean); }
+}
+function renderIg(d){
+  const chips = document.getElementById('igChips');
+  const order = ['queued','sent','dnc','skipped','discovered'];
+  chips.innerHTML = `<span class="chip"><b>${d.total}</b> profiles</span>` +
+    order.filter(s=>d.counts[s]).map(s=>`<span class="chip">${s}: <b>${d.counts[s]}</b></span>`).join('');
+  document.getElementById('igEmpty').style.display = IG_PROFILES.length ? 'none':'block';
+  const grid = document.getElementById('igGrid');
+  grid.innerHTML = IG_PROFILES.map(P=>{
+    const h = esc(P.ig_handle);
+    const sel = IG_SEL.has(P.ig_handle) ? ' sel':'';
+    const initial = (P.display_name||P.ig_handle||'?')[0].toUpperCase();
+    const checked = IG_SEL.has(P.ig_handle)?'checked':'';
+    const matchScore = P.match_score;
+    const cityScore = P.city_score;
+    const bookScore = P.book_score;
+    const matchTxt = (matchScore===''||matchScore==null) ? '—' : parseFloat(matchScore).toFixed(2);
+    const cityTxt = (cityScore===''||cityScore==null) ? '—' : parseFloat(cityScore).toFixed(2);
+    const bookTxt = (bookScore===''||bookScore==null) ? '—' : (parseFloat(bookScore)*100).toFixed(0)+'%';
+    const reasons = parseRankReasons(P.rank_reasons).map(r=>`<span class="reason-chip">${esc(r)}</span>`).join('');
+    return `<div class="card listing ig-card${sel}" id="ig-${h}" onclick="igCardClick(event,'${h}')">
+      <div class="body">
+        <div class="ig-avatar">${esc(initial)}</div>
+        <div class="ig-meta">
+          <div class="addr">@${h}</div>
+          <div class="sub">${esc(P.display_name)} ${P.follower_count?'· '+esc(P.follower_count)+' followers':''}</div>
+          <div class="score-row">
+            <span class="score-pill" style="color:${scoreColor(matchScore)}">realtor ${matchTxt}</span>
+            <span class="score-pill" style="color:${scoreColor(cityScore)}">city ${cityTxt}</span>
+            <span class="score-pill" style="color:${scoreColor(bookScore)}" title="Modeled booking propensity">book ${bookTxt}</span>
+          </div>
+          ${reasons?`<div class="score-row">${reasons}</div>`:''}
+          <div class="sub">${esc(P.city)} · ${esc(P.source)}</div>
+          <div class="bio">${esc(P.bio)||'(no bio)'}</div>
+          <div class="tags">
+            <span class="tag st-${esc(P.status)}">${esc(P.status)}</span>
+            ${P.profile_url?`<a class="tag" href="${esc(P.profile_url)}" target="_blank" onclick="event.stopPropagation()">profile ↗</a>`:''}
+          </div>
+          <div class="acts">
+            <button class="btn ghost sm" onclick="igPreview('${h}')">Preview DM</button>
+            <button class="btn ghost sm" onclick="igDnc('${h}')">DNC</button>
+          </div>
+        </div>
+        <input class="pick" type="checkbox" ${checked} onclick="event.stopPropagation()" onchange="igToggle('${h}')">
+      </div>
+    </div>`;
+  }).join('');
+  igUpdateSel();
+}
+function igToggle(h){
+  IG_SEL.has(h)?IG_SEL.delete(h):IG_SEL.add(h);
+  const el=document.getElementById('ig-'+h);
+  if(el){ el.classList.toggle('sel', IG_SEL.has(h));
+    const cb=el.querySelector('.pick'); if(cb) cb.checked=IG_SEL.has(h); }
+  igUpdateSel();
+}
+function igCardClick(ev,h){
+  if(ev.target.closest('button,a,input')) return;
+  igToggle(h);
+}
+function igUpdateSel(){ document.getElementById('igSelCount').innerHTML = `<b>${IG_SEL.size}</b> selected`; }
+function igSelectAll(){ IG_PROFILES.forEach(P=>{ if(P.status==='queued') IG_SEL.add(P.ig_handle); }); renderIg({total:IG_PROFILES.length,counts:igCountStatuses()}); }
+function igClearSel(){ IG_SEL.clear(); renderIg({total:IG_PROFILES.length,counts:igCountStatuses()}); }
+function igCountStatuses(){ const c={}; IG_PROFILES.forEach(P=>c[P.status]=(c[P.status]||0)+1); return c; }
+
+async function igPreview(h){
+  const r = await fetch('/api/ig/preview',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ig_handle:h})});
+  const d = await r.json();
+  if(d.error){ toast(d.error,true); return; }
+  document.getElementById('mTitle').textContent = 'DM to @' + h;
+  document.getElementById('mBody').textContent = d.message;
+  document.getElementById('mMeta').textContent = d.profile_url ? ('Profile: '+d.profile_url) : '';
+  document.getElementById('modal').classList.add('show');
+}
+async function igDnc(h){
+  if(!confirm('Add @'+h+' to do-not-contact?')) return;
+  const r = await fetch('/api/ig/dnc',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ig_handle:h})});
+  const d = await r.json();
+  if(d.ok){ toast('@'+h+' added to DNC'); loadIg(); } else toast(d.error||'failed',true);
+}
+
+async function igSendSelected(){
+  if(!IG_SEL.size){ toast('Select at least one profile',true); return; }
+  const dry = document.getElementById('igDry').checked;
+  const force = document.getElementById('igForce').checked;
+  const automated = document.getElementById('igAuto').checked;
+  if(!dry && automated && !confirm(`Send REAL Instagram DMs to ${IG_SEL.size} profile(s) via Playwright?`)) return;
+  if(!dry && !automated && !confirm(`Open ${IG_SEL.size} profile(s) and copy messages to clipboard? You paste & send each one.`)) return;
+  const btn = document.getElementById('igSendBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>'+(dry?'Previewing…':'Sending…');
+  try{
+    const r = await fetch('/api/ig/send',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ig_handles:[...IG_SEL], dry_run:dry, force, automated})});
+    let d; try{ d = await r.json(); }catch(_){ throw new Error('Server returned invalid response'); }
+    if(!r.ok){ toast(d.error||('Send failed ('+r.status+')'),true); return; }
+    toast(dry?'Running preview…':'Processing DMs…');
+    if(IG_SEND_POLL) clearInterval(IG_SEND_POLL);
+    IG_SEND_POLL = setInterval(async ()=>{
+      try{
+        const sr = await fetch('/api/ig/send/status?job_id='+d.job_id);
+        const job = await sr.json();
+        if(job.phase==='done'){
+          clearInterval(IG_SEND_POLL); IG_SEND_POLL=null;
+          showIgSendResults(job);
+          toast(`${dry?'Preview':'DM run'} finished`);
+          if(!dry){ IG_SEL.clear(); igUpdateSel(); }
+          loadIg();
+        } else if(job.phase==='error'){
+          clearInterval(IG_SEND_POLL); IG_SEND_POLL=null;
+          toast(job.message||'Send failed',true);
+        }
+      }catch(e){
+        clearInterval(IG_SEND_POLL); IG_SEND_POLL=null;
+        toast('Lost connection: '+e,true);
+      }
+    }, 800);
+  }catch(e){ toast('Request failed: '+e.message,true); }
+  finally{ btn.disabled=false; btn.textContent='DM selected'; }
+}
+
+function showIgSendResults(job){
+  const dry = job.dry_run;
+  const s = job.stats || {};
+  const results = job.results || [];
+  document.getElementById('sendTitle').textContent =
+    dry ? `Preview — ${s.sent||0} ready` : `Sent — ${s.sent||0} delivered`;
+  const cls = o => o==='preview'||o==='sent'?'ok':o==='dnc'?'bad':'skip';
+  let html = '';
+  if(s.error) html += `<p class="bad" style="margin:12px 0">${esc(s.error)}</p>`;
+  else html += `<p class="sub" style="margin:8px 0">${s.sent||0} ok · ${s.skipped||0} skipped · ${s.dnc||0} dnc</p>`;
+  results.forEach(r=>{
+    html += `<div class="result-row"><b class="${cls(r.outcome)}">@${esc(r.ig_handle)} — ${r.outcome}</b>`;
+    html += `<span class="sub">${esc(r.display_name)} · ${esc(r.detail)}</span>`;
+    if(r.message) html += `<div class="bubble" style="margin-top:8px;font-size:12px">${esc(r.message)}</div>`;
+    html += `</div>`;
+  });
+  document.getElementById('sendBody').innerHTML = html;
+  document.getElementById('sendModal').classList.add('show');
+}
+
+async function startIgDiscover(){
+  const minScoreRaw = document.getElementById('igMinScore').value;
+  const body = {
+    city: document.getElementById('igCity').value || 'San Antonio',
+    max: +document.getElementById('igMax').value,
+    enrich_from_queue: document.getElementById('igEnrich').checked,
+    realtor_score_threshold: minScoreRaw === '' ? null : +minScoreRaw,
+  };
+  const btn = document.getElementById('igDiscoverBtn');
+  btn.disabled = true;
+  document.getElementById('igProg').classList.add('show');
+  const r = await fetch('/api/ig/discover',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)});
+  const d = await r.json();
+  if(d.error){ toast(d.error,true); btn.disabled=false; return; }
+  IG_POLL = setInterval(()=>pollIgDiscover(d.job_id), 1500);
+}
+async function pollIgDiscover(jobId){
+  const r = await fetch('/api/ig/discover/status?job_id='+jobId); const j = await r.json();
+  document.getElementById('igPmsg').textContent = j.message || j.phase || '';
+  const bar = document.getElementById('igBar');
+  if(j.total){ bar.style.width = Math.round((j.done||0)/j.total*100)+'%'; }
+  else if(j.phase==='starting'){ bar.style.width='5%'; }
+  if(j.phase==='done' || j.phase==='error'){
+    clearInterval(IG_POLL); IG_POLL=null;
+    document.getElementById('igDiscoverBtn').disabled=false;
+    bar.style.width = j.phase==='done' ? '100%':'0';
+    const st = j.stats || {};
+    const extra = j.phase==='done'
+      ? ` · ${st.skipped_low_score||0} low score · ${st.skipped_semantic_dup||0} semantic dup`
+      : '';
+    toast((j.message || (j.phase==='done'?'Discover complete':'Discover failed')) + extra, j.phase==='error');
+    setTimeout(()=>document.getElementById('igProg').classList.remove('show'), 1500);
+    loadIg();
+  }
+}
+</script>
+</body>
+</html>

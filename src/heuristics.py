@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
@@ -22,6 +23,65 @@ else:
     BLUR_THRESHOLD = 100.0
     EXPOSURE_LOW = 40
     EXPOSURE_HIGH = 215
+
+
+# Vertical-straightness tuning. A pro shoots on a tripod with the camera level,
+# so true-vertical edges (door/window frames, wall corners) stay within ~1-2°
+# of vertical. Pointing the phone up/down makes those edges converge (keystone),
+# pushing the mean deviation well past this. Score maps deviation -> [0,1].
+VERT_NEAR_VERTICAL_DEG = 25.0   # a segment counts as "vertical-ish" within this
+VERT_MIN_LEN_FRAC = 0.12        # ignore segments shorter than 12% of image height
+# Pro real-estate work uses wide-angle lenses, which add a few degrees of
+# perspective/lens distortion to "vertical" edges even on a level tripod, and the
+# line detector also picks up near-vertical furniture/decor. The old 0.6°/3.0°
+# band was far too strict and scored professional galleries near 0. These wider
+# bounds only flag clearly keystoned phone shots (camera pointed up/down).
+VERT_GOOD_DEG = 1.5             # <= this deviation -> straight (1.0)
+VERT_BAD_DEG = 8.0             # >= this deviation -> clearly tilted/keystoned (0.0)
+
+
+def vertical_straightness(gray: np.ndarray) -> tuple[float, float, int]:
+    """Measure how vertical the building's vertical edges are.
+
+    Returns (score, mean_deviation_degrees, n_lines):
+      - score 1.0  = verticals are dead straight (level, professional)
+      - score 0.0  = verticals converge a lot (camera pointed up/down, amateur)
+    Falls back to a neutral 0.5 when there aren't enough vertical edges to judge.
+    """
+    h, w = gray.shape[:2]
+    try:
+        lsd = cv2.createLineSegmentDetector(cv2.LSD_REFINE_STD)
+        lines = lsd.detect(gray)[0]
+    except cv2.error:
+        return 0.5, 0.0, 0
+    if lines is None:
+        return 0.5, 0.0, 0
+
+    min_len = VERT_MIN_LEN_FRAC * h
+    devs, weights = [], []
+    for ln in lines:
+        x1, y1, x2, y2 = ln[0]
+        dx, dy = x2 - x1, y2 - y1
+        length = math.hypot(dx, dy)
+        if length < min_len:
+            continue
+        ang = math.degrees(math.atan2(abs(dx), abs(dy)))  # 0 = perfectly vertical
+        if ang > VERT_NEAR_VERTICAL_DEG:
+            continue
+        devs.append(ang)
+        weights.append(length)
+
+    if len(devs) < 3:
+        return 0.5, 0.0, len(devs)
+
+    mean_dev = float(np.average(devs, weights=weights))
+    if mean_dev <= VERT_GOOD_DEG:
+        score = 1.0
+    elif mean_dev >= VERT_BAD_DEG:
+        score = 0.0
+    else:
+        score = 1.0 - (mean_dev - VERT_GOOD_DEG) / (VERT_BAD_DEG - VERT_GOOD_DEG)
+    return score, mean_dev, len(devs)
 
 
 @dataclass
