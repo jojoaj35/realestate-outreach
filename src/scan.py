@@ -30,6 +30,7 @@ import photo_quality
 import photos
 import score_listings
 import scrape_hasdata
+import scrape_remote
 import scrape_zillow
 from config import settings
 from hasdata_client import hasdata_available
@@ -98,13 +99,23 @@ def scan(city: str = "Austin", count: int = 200, keep: int = 15,
             progress(kw)
 
     url = (url or "").strip()
-    # HasData scrapes Zillow from their infrastructure, so scans work from a
-    # datacenter (e.g. Render) where Zillow blocks our own stealth browser.
-    use_hasdata = hasdata_available() and not url
+    # Backend priority: 1) the Mac scraper API (real Scrapling stealth browser,
+    # reached over ngrok — set SCRAPER_API_URL), 2) HasData's scraping API,
+    # 3) local Scrapling. Zillow blocks datacenter IPs (e.g. Render), which is
+    # why 1 and 2 exist.
+    use_remote = scrape_remote.available()
+    use_hasdata = (not use_remote) and hasdata_available() and not url
     if url:
         print(f"== phase 1: scanning Zillow link (photos only) ==\n  {url}")
         report(phase="scanning", message="Scanning Zillow link…")
-        listings = scrape_zillow.discover_listings_from_url(url, max_urls=max(count, 25))
+        if use_remote:
+            listings = scrape_remote.discover_listings_from_url(url, max_urls=max(count, 25))
+        else:
+            listings = scrape_zillow.discover_listings_from_url(url, max_urls=max(count, 25))
+    elif use_remote:
+        print(f"== phase 1: discovering {count} {city} Zillow listings via Mac scraper API ==")
+        report(phase="scanning", message=f"Discovering {city} Zillow listings via your Mac…")
+        listings = scrape_remote.discover_listings(city, state, max_urls=max(count, 25))
     elif use_hasdata:
         print(f"== phase 1: discovering {count} {city} Zillow listings via HasData ==")
         report(phase="scanning", message=f"Discovering {city} Zillow listings via HasData…")
@@ -154,7 +165,9 @@ def scan(city: str = "Austin", count: int = 200, keep: int = 15,
            message=f"Opening detail pages for {len(candidates)} kept listings…")
 
     # One stealth browser session reads agent contact + full gallery for all kept.
-    if use_hasdata:
+    if use_remote:
+        scrape_remote.enrich_agents(candidates, city, state)
+    elif use_hasdata:
         _hasdata_enrich(candidates)
     else:
         scrape_zillow.enrich_agents(candidates, city, state)
